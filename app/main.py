@@ -19,6 +19,12 @@ class GenerateRequest(BaseModel):
     steps: int = Field(default=config.DEFAULT_STEPS, ge=1, le=8)
     size: int = Field(default=config.DEFAULT_SIZE, ge=384, le=768)
     fps: int = Field(default=config.DEFAULT_FPS, ge=12, le=30)
+    motion: str = Field(
+        default="auto",
+        pattern="^(auto|zoom_in|zoom_out|pan_left|pan_right|tilt_up|tilt_down|orbit|drift|pulse|rise|handheld)$",
+    )              # camera preset; 'auto' varies them across segments
+    morph: bool = True           # optical-flow morph between segments
+    effects: bool = True         # vignette + grain polish
     seed: int | None = None
 
 
@@ -56,6 +62,10 @@ def _run_generation(job_id: str, req: GenerateRequest):
             segment_seconds=config.SEGMENT_SECONDS,
             fade_seconds=config.FADE_SECONDS,
             zoom=config.ZOOM_AMOUNT,
+            motion=req.motion,
+            morph=req.morph,
+            effects=req.effects,
+            seed=base_seed,
         )
         jobs.update(job_id, status="done", progress=1.0, stage="done",
                     result={"video": f"/outputs/{job_id}.mp4", "seed": base_seed})

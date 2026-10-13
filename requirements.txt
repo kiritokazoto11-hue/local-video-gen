@@ -17,3 +17,4 @@ uvicorn[standard]>=0.30
 Pillow>=10.3
 numpy>=1.26,<3
 imageio[ffmpeg]>=2.34
+opencv-python-headless>=4.9

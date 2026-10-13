@@ -16,11 +16,31 @@ www.modelscope.cn instead). The app opens at http://127.0.0.1:8000.
 ## API
 
 ```
-POST /api/generate      { "prompt": "...", "style": "cinematic", "num_keyframes": 6, "seed": null }
+POST /api/generate      { "prompt": "...", "style": "cinematic", "num_keyframes": 6,
+                          "motion": "auto", "morph": true, "effects": true, "seed": null }
 GET  /api/jobs/{id}     -> { status, progress, stage, result: { video, seed } }
 GET  /api/gallery       -> recent videos
 GET  /outputs/{id}.mp4  -> the video files themselves
 ```
+
+### Motion presets (`motion`)
+
+| Value | Effect |
+|---|---|
+| `auto` (default) | Varies the preset per segment, avoiding repeats |
+| `zoom_in` / `zoom_out` | Dolly zoom with slight drift |
+| `pan_left` / `pan_right` | Horizontal sweep |
+| `tilt_up` / `tilt_down` | Vertical sweep |
+| `orbit` | Rotating arc sweep |
+| `drift` | Diagonal float |
+| `pulse` | Breathing zoom (in then out) |
+| `rise` | Pull-back reveal |
+| `handheld` | Organic camera shake |
+
+- `morph: true` (default) — optical-flow morph transitions: frames genuinely
+  warp into each other instead of a flat dissolve.
+- `effects: true` (default) — subtle vignette + film grain polish.
+- All motion is eased (smoothstep) for a cinematic feel.
 
 ## Configuration (environment variables)
 

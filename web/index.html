@@ -25,6 +25,12 @@
   textarea { min-height: 74px; resize: vertical; }
   .row { display: flex; gap: 10px; }
   .row > * { flex: 1; }
+  .chk {
+    display: flex; align-items: center; gap: 7px; font-size: 14px; color: #b9c1d4;
+    background: #0e1119; border: 1px solid #2a3247; border-radius: 9px;
+    padding: 10px 12px; margin-bottom: 10px; cursor: pointer; justify-content: center;
+  }
+  .chk input { width: auto; margin: 0; }
   button {
     width: 100%; padding: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
     background: linear-gradient(135deg, #6c5ce7, #4834d4); color: white;
@@ -65,6 +71,24 @@
     </select>
     <input id="seed" type="number" placeholder="Seed (random)" title="Leave empty for random">
   </div>
+  <div class="row">
+    <select id="motion" title="Camera movement applied to each segment">
+      <option value="auto" selected>Motion: Auto (varied)</option>
+      <option value="zoom_in">Motion: Zoom in</option>
+      <option value="zoom_out">Motion: Zoom out</option>
+      <option value="pan_right">Motion: Pan right</option>
+      <option value="pan_left">Motion: Pan left</option>
+      <option value="tilt_up">Motion: Tilt up</option>
+      <option value="tilt_down">Motion: Tilt down</option>
+      <option value="orbit">Motion: Orbit sweep</option>
+      <option value="drift">Motion: Drift</option>
+      <option value="pulse">Motion: Pulse</option>
+      <option value="rise">Motion: Rise</option>
+      <option value="handheld">Motion: Handheld</option>
+    </select>
+    <label class="chk"><input type="checkbox" id="morph" checked> Morph transitions</label>
+    <label class="chk"><input type="checkbox" id="effects" checked> Film polish</label>
+  </div>
   <button id="go">Generate video</button>
   <div id="status"></div>
   <div class="bar"><div id="bar"></div></div>
@@ -101,6 +125,9 @@ $('go').onclick = async () => {
     prompt,
     style: $('style').value,
     num_keyframes: +$('keyframes').value,
+    motion: $('motion').value,
+    morph: $('morph').checked,
+    effects: $('effects').checked,
     seed: $('seed').value === '' ? null : +$('seed').value,
   };
 
