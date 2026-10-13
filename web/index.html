@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VideoAI — local text-to-video</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, sans-serif; background: #0b0d12; color: #e8eaf0;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+  }
+  header { padding: 28px 16px 8px; text-align: center; }
+  header h1 { margin: 0; font-size: 26px; letter-spacing: .5px; }
+  header p { margin: 6px 0 0; color: #9aa3b5; font-size: 14px; }
+  .card {
+    background: #141824; border: 1px solid #232a3b; border-radius: 14px;
+    padding: 18px; width: min(680px, 94vw); margin: 18px 0;
+  }
+  textarea, select, input {
+    width: 100%; background: #0e1119; color: #e8eaf0; border: 1px solid #2a3247;
+    border-radius: 9px; padding: 10px 12px; font-size: 15px; margin-bottom: 10px;
+  }
+  textarea { min-height: 74px; resize: vertical; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  button {
+    width: 100%; padding: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
+    background: linear-gradient(135deg, #6c5ce7, #4834d4); color: white;
+    border: 0; border-radius: 10px;
+  }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  #status { margin-top: 12px; font-size: 14px; color: #9aa3b5; min-height: 20px; }
+  .bar { height: 6px; background: #1c2233; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+  .bar > div { height: 100%; width: 0%; background: #6c5ce7; transition: width .5s; }
+  video { width: 100%; border-radius: 10px; margin-top: 12px; background: #000; }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .gallery video { margin: 0; cursor: pointer; }
+  h2 { font-size: 16px; color: #9aa3b5; margin: 4px 0 10px; }
+  #result[hidden], .hidden { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎬 VideoAI</h1>
+  <p>Local text-to-video — diffusion keyframes + cinematic motion. No cloud, no API keys.</p>
+</header>
+
+<div class="card">
+  <textarea id="prompt" placeholder="Describe your video… e.g. A misty mountain lake at sunrise, flocks of birds, golden light">A misty mountain lake at sunrise, golden light, calm water reflections</textarea>
+  <div class="row">
+    <select id="style">
+      <option value="none">No style</option>
+      <option value="cinematic" selected>Cinematic</option>
+      <option value="anime">Anime</option>
+      <option value="claymation">Claymation</option>
+      <option value="cyberpunk">Cyberpunk</option>
+    </select>
+    <select id="keyframes">
+      <option value="4">4 keyframes (~7s)</option>
+      <option value="6" selected>6 keyframes (~10s)</option>
+      <option value="8">8 keyframes (~14s)</option>
+      <option value="10">10 keyframes (~17s)</option>
+    </select>
+    <input id="seed" type="number" placeholder="Seed (random)" title="Leave empty for random">
+  </div>
+  <button id="go">Generate video</button>
+  <div id="status"></div>
+  <div class="bar"><div id="bar"></div></div>
+  <video id="result" controls hidden></video>
+</div>
+
+<div class="card" id="galleryCard" hidden>
+  <h2>Gallery</h2>
+  <div class="gallery" id="gallery"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let polling = null;
+
+async function refreshGallery() {
+  const items = await (await fetch('/api/gallery')).json();
+  if (!items.length) return;
+  $('galleryCard').hidden = false;
+  $('gallery').innerHTML = items.map(i =>
+    `<video src="${i.video}" controls muted loop playsinline preload="metadata" onclick="this.requestFullscreen()"></video>`
+  ).join('');
+}
+
+$('go').onclick = async () => {
+  const prompt = $('prompt').value.trim();
+  if (!prompt) return;
+  $('go').disabled = true;
+  $('result').hidden = true;
+  $('status').textContent = 'Submitting…';
+  $('bar').style.width = '2%';
+
+  const body = {
+    prompt,
+    style: $('style').value,
+    num_keyframes: +$('keyframes').value,
+    seed: $('seed').value === '' ? null : +$('seed').value,
+  };
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const {job_id} = await res.json();
+    polling = setInterval(async () => {
+      const job = await (await fetch('/api/jobs/' + job_id)).json();
+      $('status').textContent = job.stage + ' — ' + Math.round(job.progress * 100) + '%';
+      $('bar').style.width = (job.progress * 100) + '%';
+      if (job.status === 'done') {
+        clearInterval(polling);
+        $('go').disabled = false;
+        $('status').textContent = 'Done! seed=' + job.result.seed;
+        $('bar').style.width = '100%';
+        const v = $('result');
+        v.src = job.result.video; v.hidden = false;
+        v.play();
+        refreshGallery();
+      } else if (job.status === 'error') {
+        clearInterval(polling);
+        $('go').disabled = false;
+        $('status').textContent = 'Error: ' + job.error;
+      }
+    }, 1500);
+  } catch (e) {
+    $('go').disabled = false;
+    $('status').textContent = 'Request failed: ' + e;
+  }
+};
+
+refreshGallery();
+</script>
+</body>
+</html>
