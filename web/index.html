@@ -86,6 +86,7 @@
       <option value="rise">Motion: Rise</option>
       <option value="handheld">Motion: Handheld</option>
     </select>
+    <label class="chk" title="Each keyframe evolves from the previous one — one continuous transforming scene"><input type="checkbox" id="coherent" checked> Coherent scene</label>
     <label class="chk"><input type="checkbox" id="morph" checked> Morph transitions</label>
     <label class="chk"><input type="checkbox" id="effects" checked> Film polish</label>
   </div>
@@ -128,6 +129,7 @@ $('go').onclick = async () => {
     motion: $('motion').value,
     morph: $('morph').checked,
     effects: $('effects').checked,
+    coherent: $('coherent').checked,
     seed: $('seed').value === '' ? null : +$('seed').value,
   };
 

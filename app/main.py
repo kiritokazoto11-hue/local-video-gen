@@ -25,6 +25,8 @@ class GenerateRequest(BaseModel):
     )              # camera preset; 'auto' varies them across segments
     morph: bool = True           # optical-flow morph between segments
     effects: bool = True         # vignette + grain polish
+    coherent: bool = True        # evolve each keyframe from the previous one (one continuous scene)
+    flow_strength: float = Field(default=0.55, ge=0.2, le=0.9)  # how much each chained step changes
     seed: int | None = None
 
 
@@ -38,7 +40,7 @@ STYLE_SUFFIX = {
 
 
 def _run_generation(job_id: str, req: GenerateRequest):
-    from .generator import generate_image
+    from .generator import generate_image, generate_variation
     from .animator import animate
 
     try:
@@ -46,13 +48,30 @@ def _run_generation(job_id: str, req: GenerateRequest):
         base_seed = req.seed if req.seed is not None else int.from_bytes(os.urandom(4), "big")
         prompt = req.prompt + STYLE_SUFFIX.get(req.style, "")
         frames = []
-        for i in range(req.num_keyframes):
-            jobs.update(
-                job_id,
-                stage=f"generating keyframe {i + 1}/{req.num_keyframes}",
-                progress=i / (req.num_keyframes + 1),
-            )
-            frames.append(generate_image(prompt, seed=base_seed + i, steps=req.steps, size=req.size))
+        if req.coherent:
+            # Frame 1 from scratch, then each frame evolved from the last ->
+            # one continuous scene that the morph transitions animate.
+            jobs.update(job_id, stage=f"generating keyframe 1/{req.num_keyframes}",
+                        progress=0 / (req.num_keyframes + 1))
+            frames.append(generate_image(prompt, seed=base_seed, steps=req.steps, size=req.size))
+            for i in range(1, req.num_keyframes):
+                jobs.update(
+                    job_id,
+                    stage=f"evolving scene {i + 1}/{req.num_keyframes}",
+                    progress=i / (req.num_keyframes + 1),
+                )
+                frames.append(generate_variation(
+                    prompt, frames[-1], seed=base_seed + i,
+                    strength=req.flow_strength, size=req.size,
+                ))
+        else:
+            for i in range(req.num_keyframes):
+                jobs.update(
+                    job_id,
+                    stage=f"generating keyframe {i + 1}/{req.num_keyframes}",
+                    progress=i / (req.num_keyframes + 1),
+                )
+                frames.append(generate_image(prompt, seed=base_seed + i, steps=req.steps, size=req.size))
 
         jobs.update(job_id, stage="rendering video", progress=req.num_keyframes / (req.num_keyframes + 1))
         out_path = config.OUTPUT_DIR / f"{job_id}.mp4"

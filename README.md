@@ -17,11 +17,22 @@ www.modelscope.cn instead). The app opens at http://127.0.0.1:8000.
 
 ```
 POST /api/generate      { "prompt": "...", "style": "cinematic", "num_keyframes": 6,
-                          "motion": "auto", "morph": true, "effects": true, "seed": null }
+                          "motion": "auto", "morph": true, "effects": true,
+                          "coherent": true, "flow_strength": 0.55, "seed": null }
 GET  /api/jobs/{id}     -> { status, progress, stage, result: { video, seed } }
 GET  /api/gallery       -> recent videos
 GET  /outputs/{id}.mp4  -> the video files themselves
 ```
+
+### Coherent scene mode (`coherent`, default on)
+
+Keyframe 1 is generated from the prompt; every following keyframe is *evolved
+from the previous one* with img2img (shared weights, no extra memory). The
+result is one continuous transforming scene instead of separate images — the
+morph transitions then animate the actual change between steps.
+
+- `flow_strength` (0.2–0.9, default 0.55) controls how much changes per step:
+  lower = calmer evolution, higher = more dramatic transformation.
 
 ### Motion presets (`motion`)
 
